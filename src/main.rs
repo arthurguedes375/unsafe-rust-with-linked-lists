@@ -9,7 +9,7 @@ struct Node<T> {
     next: Option<Box<Node<T>>>,
 }
 
-impl<T: Copy> Node<T> {
+impl<'a, T: Copy> Node<T> {
     pub fn get(&self, i: usize) -> Option<&Node<T>> {
         if i == 0 {
             return Some(self);
@@ -34,6 +34,14 @@ impl<T: Copy> Node<T> {
         None
     }
 
+    pub fn insert_before(&'a mut self, val: &T) {
+        let current = mem::replace(self, Node {
+            value: *val,
+            next: None,
+        });
+        self.next = Some(Box::new(current));
+    }
+
     pub fn insert_at_the_end(&mut self, val: &T) {
         if let Some(next) = &mut self.next {
             (**next).insert_at_the_end(val);
@@ -49,7 +57,7 @@ impl<T: Copy> Node<T> {
     pub fn insert_in_place(&mut self, val: T) {
         /*
          * All of this code is made as a learning resource.
-         * Instead of all of this unsafe code you could just do: 'self.next.take()' (which 
+         * Instead of all of this unsafe code you could just do: 'self.next.take()' (which
          * internally uses the mem::replace which uses the same code provided here.)
          */
         let next_val = unsafe {
@@ -90,7 +98,7 @@ fn main() {
     first.insert_at_the_end(&3);
     first.insert_at_the_end(&4);
 
-        /*
+    /*
      * If we don't use the ManuallyDrop,
      * At the end of the program both the first and the copyoffirst will get freed by rust.
      * The problem is that both of them have a reference to the same values.
@@ -101,20 +109,24 @@ fn main() {
      * In this case, we don't need to drop the copyoffirst because it's data is also owned by first
      * which will get freed up automagically by rust :). Resulting in no seg faults
      */
-    let mut copyoffirst = ManuallyDrop::new(unsafe { ptr::read(&mut first) });
+    let copyoffirst = ManuallyDrop::new(unsafe { ptr::read(&mut first) });
+    
+    // This should not go to copyoffirst
+    first.insert_in_place(222222);
+    first.insert_before(&0);
 
-    first.insert_in_place(76600);
-
-    copyoffirst.insert_in_place(99999);
+    // This proves that the 'inser_before' is not copying the data. Because both the copyoffirst
+    // and the first get updated
+    first.get_mut(3).unwrap().value = 333333;
 
     /*
-     * As a prove that the insert_in_place is not copying the data in order to move it, when i
+     * This proves that the insert_in_place is not copying the data in order to move it, when i
      * update the first[3] value, both the copyoffirst and the first values get updated lol. unsafe
      * rust is amazing.
      * Tho i am getting a seg fault for some reason.
      * [ADDED LATER] Just Fixed seg fault lmao, read all of the comments to understand
      */
-    first.get_mut(3).unwrap().value = 888888;
+    first.get_mut(4).unwrap().value = 44444;
 
     let g = vec![first.get(0), copyoffirst.get(0)];
 
