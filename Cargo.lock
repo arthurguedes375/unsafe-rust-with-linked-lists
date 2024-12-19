@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "tst"
+name = "unsafe-rust-with-linked-lists"
 version = "0.1.0"
